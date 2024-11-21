@@ -2,6 +2,8 @@
 
 This project is a simple To-Do API built with Django, PostgreSQL, Docker, Nginx, and GitHub Actions for continuous integration and deployment. The application features user authentication, data persistence, and email notifications. It is containerized using Docker, deployed using Ansible, and includes a CI pipeline that builds and tests the application on every push to the repository.
 
+Docker Repository: https://hub.docker.com/repository/docker/cadams654/cd-ci-final-project/general
+
 ## Learning Objectives
 
 - Gain practical experience with Docker containerization, including multi-service applications.
