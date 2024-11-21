@@ -1,4 +1,4 @@
-# Django Application with DevOps Practices
+# Todo Django Application with DevOps Practices
 
 This project is a simple To-Do API built with Django, PostgreSQL, Docker, Nginx, and GitHub Actions for continuous integration and deployment. The application features user authentication, data persistence, and email notifications. It is containerized using Docker, deployed using Ansible, and includes a CI pipeline that builds and tests the application on every push to the repository.
 
