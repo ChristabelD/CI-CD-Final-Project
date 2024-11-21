@@ -181,5 +181,7 @@ Copy code
       command: docker-compose up -d
       args:
         chdir: /path/to/project
-Conclusion
+
+
+## Conclusion
 By following the steps outlined in this README, you'll gain hands-on experience with Docker, CI/CD pipelines, Ansible automation, and deploying a production-grade Django application. This project combines development, DevOps, and cloud deployment skills to create a robust web application.
