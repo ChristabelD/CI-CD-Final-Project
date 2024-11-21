@@ -96,7 +96,7 @@ Copy code
 docker-compose up --build
 Access the application:
 
-Django app is available at http://localhost:8000.
+Django app is available at http://localhost:1234.
 Nginx will reverse proxy requests to the Django app, exposed at http://localhost.
 CI/CD with GitHub Actions
 Once you push changes to your GitHub repository, GitHub Actions will automatically run the CI pipeline. The pipeline will:
