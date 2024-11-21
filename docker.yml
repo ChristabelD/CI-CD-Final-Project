@@ -1,0 +1,53 @@
+---
+- name: Deploy Dockerized Django Application
+  hosts: 104.248.241.153
+  become: yes
+  vars:
+    docker_images:
+      - my-cd-ci  # Add other images if needed
+    username: my
+    password: my
+    app_dir: /home/my/app
+
+  tasks:
+    - name: Install Docker and Docker Compose
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+        state: present
+        update_cache: yes
+
+    - name: Pull the latest Docker images
+      docker_image:
+        name: "cadams654/cd-ci-final-project:latest"
+        source: pull
+
+    - name: Create the application directory
+      file:
+        path: ""
+        state: directory
+
+    - name: Copy application files to target server
+      copy:
+        src: ./
+        dest: "/var/www/todo"
+        owner: my
+        group: my
+        mode: '0755'
+        recurse: yes
+
+    - name: Run docker-compose up
+      docker_compose:
+        project_src: "/var/www/todo"
+        restarted: yes
+        state: present
+        username: "pelin"
+        password: "pelin"
+
+    - name: Expose application port
+      ufw:
+        rule: allow
+        name: '8000'
+        proto: tcp
+        state: enabled

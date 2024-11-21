@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Django service
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn --bind 0.0.0.0:1234 todo.wsgi:application
+    volumes:
+      - .:/app
+    expose:
+      - "8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/dbname
+
+  # PostgreSQL service
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: dbname
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  # Nginx service (Reverse Proxy)
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx.Dockerfile
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "444:444"
+    depends_on:
+      - django
+    networks:
+      - frontend
+      - backend
+
+  # Email server (MailHog for testing)
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI for MailHog
+    networks:
+      - frontend
+
+volumes:
+  pg_data:
+
+networks:
+  frontend:
+  backend:
+    driver: bridge
