@@ -5,6 +5,9 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils import timezone
 from .models import Todo
 from .serializers import TodoSerializer, UserSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -12,13 +15,80 @@ from django.shortcuts import get_object_or_404
 
 # Create your views here.
 
+from django.core.mail import send_mail
+from django.conf import settings
+
+class UserRegistrationViewSet(viewsets.GenericViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            
+            subject = 'Welcome to Our Platform'
+            message = render_to_string(
+                'welcome_email.html', 
+                {'user': user, 'current_year': timezone.now().year}
+            )
+
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+    )
+            
+            response = Response({
+                "user": UserSerializer(user).data,
+                "message": "User created successfully",
+                "tokens": {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                }
+            }, status=status.HTTP_201_CREATED)
+
+            # Add token to response cookies
+            response.set_cookie(
+                'access_token',
+                str(refresh.access_token),
+                httponly=True,
+                samesite='Strict'
+            )
+            return response
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class TodoViewSet(viewsets.ModelViewSet):
     serializer_class = TodoSerializer
     permission_classes = [IsAuthenticated]
     def get_queryset(self):
             return Todo.objects.filter(user=self.request.user)
+    
     def perform_create(self, serializer):
-            serializer.save(user=self.request.user)
+        todo = serializer.save(user=self.request.user)
+
+        # Render the todo created email template
+        subject = 'New Todo Created'
+        message = render_to_string(
+            'email/todo_created_email.html',
+            {'user': self.request.user, 'todo': todo, 'current_year': timezone.now().year}
+        )
+
+        # Send the email
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [self.request.user.email],
+            fail_silently=False,
+        )
+
     @action(detail=True, methods=['post'])
     def toggle_complete(self, request, pk=None):
             todo = self.get_object()
@@ -105,6 +175,19 @@ def register_user(request):
     if serializer.is_valid():
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
+        subject = 'Welcome to Our Platform'
+        message = render_to_string(
+                'welcome_email.html', 
+                {'user': user, 'current_year': timezone.now().year}
+        )
+
+        send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+        )
         return Response({
                 "user": UserSerializer(user).data,
             "message": "User created successfully",

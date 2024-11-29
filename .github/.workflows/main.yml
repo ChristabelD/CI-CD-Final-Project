@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 on:
   push:
@@ -9,9 +9,8 @@ on:
       - main
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -19,31 +18,76 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.11'
+          python-version: "3.12"
 
-      - name: Cache pip
-        uses: actions/cache@v2
+      - name: Install flake8 for linting
+        run: pip install flake8
+
+      - name: Run flake8 linter
+        run: flake8 . --exit-zero
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Debug Docker Build Context
+        run: ls -la cd-ci-final-project/
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          username: cadams654
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Install backend dependencies
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -f Dockerfile \
+            -t cadams654/cd-ci-final-project:latest \
+            . 
+
+      - name: Push Docker Image to Docker Hub
+        run: docker push cadams654/cd-ci-final-project:latest
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      db:
+        image: postgres:17
+        env:
+          POSTGRES_DB: todo_db
+          POSTGRES_USER: todo_user
+          POSTGRES_PASSWORD: securepassword
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U $POSTGRES_USER"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r cd-ci-final-project/requirements.txt  # Make sure this path is correct
 
-      - name: Create migrations
-        run: python manage.py makemigrations --check --dry-run
-
-      - name: Run migrations
-        run: python manage.py migrate
-
-      - name: Run backend tests
-        run: python manage.py test
-
-      - name: Deploy
-        if: success()
+      - name: Wait for Database to be Ready
         run: |
-          curl -X POST https://ecotrackrw.pythonanywhere.com/api/github-webhook
+          for i in {1..10}; do
+            pg_isready -h db -p 5432 -U $POSTGRES_USER && break || sleep 5;
+          done

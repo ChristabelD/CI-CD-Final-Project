@@ -1,0 +1,54 @@
+---
+- name: Update and upgrade apt packages
+  apt:
+    update_cache: yes
+    upgrade: yes
+
+- name: Remove conflicting packages
+  apt:
+    name:
+      - containerd
+      - docker.io
+    state: absent
+    autoremove: yes
+
+- name: Install Docker using official repository
+  block:
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+
+    - name: Install Docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+- name: Install other dependencies
+  apt:
+    name:
+      - python3-pip
+      - python3-venv
+      - docker-compose
+    state: present
+
+- name: Ensure Docker service is started
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add the user to the Docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes

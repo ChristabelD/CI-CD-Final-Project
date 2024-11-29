@@ -1,0 +1,113 @@
+---
+# Install dependencies
+- name: Install dependencies for Docker deployment
+  hosts: webserver
+  become: yes
+  tasks:
+    - import_tasks: install_dependencies.yml
+
+# Deploy the application
+- name: Deploy Dockerized application
+  hosts: webserver
+  become: yes
+
+  vars:
+    # Docker Hub credentials
+    docker_hub_username: "{{ lookup('env', 'DOCKER_HUB_USERNAME') }}"
+    docker_hub_password: "{{ lookup('env', 'DOCKER_HUB_PASSWORD') }}"
+
+    # Deployment path
+    deployment_path: /root/deployment
+
+    # Database configuration
+    db_name: "{{ lookup('env', 'DB_NAME') }}"
+    db_user: "{{ lookup('env', 'DB_USER') }}"
+    db_password: "{{ lookup('env', 'DB_PASSWORD') }}"
+
+    # Application configuration
+    app_port: "{{ lookup('env', 'APP_PORT') }}"
+    container_port: "{{ lookup('env', 'CONTAINER_PORT') }}"
+    nginx_port: "{{ lookup('env', 'NGINX_PORT') }}"
+    nginx_container_port: "{{ lookup('env', 'NGINX_CONTAINER_PORT') }}"
+
+    # Django superuser credentials
+    django_superuser_username: "{{ lookup('env', 'DJANGO_SUPERUSER_USERNAME') }}"
+    django_superuser_email: "{{ lookup('env', 'DJANGO_SUPERUSER_EMAIL') }}"
+    django_superuser_password: "{{ lookup('env', 'DJANGO_SUPERUSER_PASSWORD') }}"
+
+  tasks:
+    - name: Log into Docker Hub
+      community.docker.docker_login:
+        username: "{{ docker_hub_username }}"
+        password: "{{ docker_hub_password }}"
+        state: present
+      when: docker_hub_username is defined and docker_hub_password is defined
+
+    - name: Create deployment directory
+      file:
+        path: "{{ deployment_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy docker-compose.yml to remote server
+      copy:
+        src: ../docker-compose.yml
+        dest: "{{ deployment_path }}/docker-compose.yml"
+        mode: "0644"
+
+    - name: Create the nginx configuration directory
+      file:
+        path: "{{ deployment_path }}/nginx"
+        state: directory
+        mode: "0755"
+
+    - name: Copy nginx configuration
+      copy:
+        src: ../nginx/nginx.conf
+        dest: "{{ deployment_path }}/nginx/nginx.conf"
+        mode: "0644"
+
+    - name: Copy wait-for-it script
+      copy:
+        src: ../wait-for-it.sh
+        dest: "{{ deployment_path }}/wait-for-it.sh"
+        mode: "0755"
+
+    - name: Create .env file
+      copy:
+        content: |
+          DB_NAME="{{ db_name }}"
+          DB_USER="{{ db_user }}"
+          DB_PASSWORD="{{ db_password }}"
+          APP_PORT="{{ app_port }}"
+          CONTAINER_PORT="{{ container_port }}"
+          NGINX_PORT="{{ nginx_port }}"
+          NGINX_CONTAINER_PORT="{{ nginx_container_port }}"
+          DJANGO_SUPERUSER_USERNAME="{{ django_superuser_username }}"
+          DJANGO_SUPERUSER_EMAIL="{{ django_superuser_email }}"
+          DJANGO_SUPERUSER_PASSWORD="{{ django_superuser_password }}"
+        dest: "{{ deployment_path }}/.env"
+        mode: "0600"
+
+    - name: Pull the latest Docker images
+      command: docker-compose pull
+      args:
+        chdir: "{{ deployment_path }}"
+      register: pull_result
+      changed_when: "'Downloaded newer image' in pull_result.stdout"
+
+    - name: Start the application with Docker Compose
+      command: docker-compose up -d --remove-orphans
+      args:
+        chdir: "{{ deployment_path }}"
+      register: compose_result
+
+    - name: Verify Docker Compose services
+      command: docker-compose ps
+      args:
+        chdir: "{{ deployment_path }}"
+      register: docker_services
+
+    - name: Debug output of running services
+      debug:
+        var: docker_services.stdout_lines

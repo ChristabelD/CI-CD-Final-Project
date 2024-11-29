@@ -1,0 +1,45 @@
+<!-- templates/email/profile_update_email.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Profile Has Been Updated</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .content {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #888888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <h2>Hello {{ user.username }},</h2>
+            <p>Your profile information has been successfully updated.</p>
+            <p>If you didn't make this change, please contact our support team immediately.</p>
+            <p>Best regards,<br>The Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; {{ current_year }} Our Platform. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
