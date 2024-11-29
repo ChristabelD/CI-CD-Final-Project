@@ -1,8 +1,4 @@
 ---
-- name: Update and upgrade apt packages
-  apt:
-    update_cache: yes
-    upgrade: yes
 
 - name: Remove conflicting packages
   apt:
@@ -11,27 +7,6 @@
       - docker.io
     state: absent
     autoremove: yes
-
-- name: Install Docker using official repository
-  block:
-    - name: Add Docker GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Add Docker repository
-      apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
-        state: present
-
-    - name: Install Docker packages
-      apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-        state: present
-        update_cache: yes
 
 - name: Install other dependencies
   apt:
